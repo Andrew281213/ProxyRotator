@@ -107,3 +107,6 @@ class ProxyRotator:
 				logger.warning(f"Не удалось загрузить прокси с {url}")
 				logger.debug(f"Не удалось загрузить прокси {e}")
 		return proxy_list
+	
+	def __len__(self):
+		return len(self.proxies)

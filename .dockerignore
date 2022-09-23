@@ -1,0 +1,11 @@
+.idea
+.git
+env
+tests/.pytest_cache
+__pycache__/
+
+*.py[cod]
+*$py.class
+
+.env.ex
+urls.txt.ex
