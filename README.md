@@ -1,29 +1,32 @@
 # ProxyRotator
+
 Простой ротатор прокси. Подгружает прокси по списку ссылок и поочереди выдает 1 прокси при запросе.
 Присутствует поддержка асинхронности
 
 ## Пример использования:
-```python
-from rotator import ProxyRotator
 
+Получить 1 прокси:
 
-rotator = ProxyRotator()
-print(rotator.sync_get_proxy())
-# http://192.168.1.100:8000
+```
+http://localhost:9001/proxy
+# socks4://192.168.1.100:8000
 ```
 
-## Пример использования с asyncio
-```python
-import asyncio
+Получить n прокси:
 
-from rotator import ProxyRotator
+```
+http://localhost:9001/proxy?cnt=n
+# ["socks4://192.168.1.100:8000", ...]
+```
 
+Получить все прокси:
+```http://localhost:9001/proxies```
 
-async def start():
-	rotator = ProxyRotator()
-	print(await rotator.async_get_proxy())
-
-
-asyncio.run(start())
-# http://192.168.1.100:8000
+```json
+{
+	"len": 1,
+	"proxies": [
+		"socks4://192.168.1.100:8000"
+	]
+}
 ```

@@ -11,4 +11,4 @@ RUN python3.10 -m pip install --upgrade -r /proxy_web/requirements.txt
 COPY ./app /proxy_web
 EXPOSE 9001
 
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "9001"]
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "9001", "--reload"]
