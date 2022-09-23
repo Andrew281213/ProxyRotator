@@ -20,6 +20,7 @@ class ProxyRotator:
 			raise ValueError("Нет ссылок для загрузки прокси")
 		self._proxy_list = None
 		self._iter = None
+		self._aiter = None
 	
 	@property
 	def proxies(self):
@@ -42,6 +43,13 @@ class ProxyRotator:
 			self._iter = self.__next__()
 		return self._iter
 	
+	@property
+	def __aiter(self):
+		"""Асинхронный итератор"""
+		if self._aiter is None:
+			self._aiter = self.__anext__()
+		return self._aiter
+	
 	def _load_urls(self, filepath, type_separator):
 		"""Загрузка ссылок из файла"""
 		logger.debug("Загружаю ссылки из файла")
@@ -61,14 +69,29 @@ class ProxyRotator:
 			logger.debug(f"Синхронно получен прокси {proxy}")
 			yield proxy
 	
+	async def __anext__(self):
+		"""Асинхронное получение прокси"""
+		for proxy in itertools.cycle(self.proxies):
+			logger.debug(f"Асинхронно получен прокси {proxy}")
+			yield proxy
+	
 	def __iter__(self):
 		"""Получить синхронный итератор"""
 		return self.__iter
+	
+	def __aiter__(self):
+		"""Получить асинхронный итератор"""
+		return self.__aiter
 	
 	def sync_get_proxy(self):
 		"""Синхронно получает прокси"""
 		it = self.__iter__()
 		return it.__next__()
+	
+	async def async_get_proxy(self):
+		"""Асинхронно получает прокси"""
+		it = self.__aiter__()
+		return await it.__anext__()
 	
 	def _load_proxies_from_urls(self):
 		"""Загрузка прокси по ссылкам"""
