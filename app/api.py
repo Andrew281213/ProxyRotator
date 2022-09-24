@@ -1,8 +1,8 @@
 import os
-
 import uvicorn
 import requests
 
+from datetime import datetime
 from fastapi import FastAPI
 
 from rotator import ProxyRotator, logger
@@ -28,6 +28,8 @@ app = FastAPI(
 	docs_url="/help/docs"
 )
 app.state.rotator = ProxyRotator()
+app.state.start_time = datetime.now()
+app.state.last_usage = None
 
 
 def send_tg_msg(msg):
@@ -64,16 +66,40 @@ send_tg_msg("Сервис <b>Proxy Rotator</b> успешно запущен")
 async def get_proxy_cnt(cnt: int = 1) -> str or dict:
 	"""Получает cnt случайных прокси"""
 	proxy_list = [app.state.rotator.sync_get_proxy() for _ in range(cnt)]
+	app.state.last_usage = datetime.now()
 	return proxy_list[0] if cnt == 1 else proxy_list
 
 
 @app.get("/proxies", status_code=200, tags=["proxy", "proxies"])
 async def proxies():
 	"""Выводит все доступные прокси"""
+	app.state.last_usage = datetime.now()
 	return {
 		"len": len(app.state.rotator),
 		"proxies": app.state.rotator.proxies
 	}
+
+
+@app.get("/stats", status_code=200, tags=["proxy", "proxies", "stats"])
+async def stats():
+	return {
+		"proxies_cnt": len(app.state.rotator),
+		"iteration_cnt": app.state.rotator.iteration_cnt,
+		"uptime": str(datetime.now() - app.state.start_time),
+		"last_update": app.state.rotator.last_update,
+		"last_usage": app.state.last_usage
+	}
+
+
+@app.get("/stats/urls", status_code=200, tags=["urls", "stats"])
+async def urls_stats():
+	return {
+		"total": len(app.state.rotator),
+		"urls": app.state.rotator.proxy_urls_stats
+	}
+
+
+# TODO: Добавить авто-обновление прокси по времени
 
 
 if __name__ == '__main__':

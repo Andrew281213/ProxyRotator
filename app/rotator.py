@@ -3,6 +3,7 @@ import requests
 import itertools
 
 from dotenv import load_dotenv
+from datetime import datetime
 from loguru import logger
 
 
@@ -21,6 +22,9 @@ class ProxyRotator:
 		self._proxy_list = None
 		self._iter = None
 		self._aiter = None
+		self.iteration_cnt = 0
+		self.last_update = None
+		self.proxy_urls_stats = []
 	
 	@property
 	def proxies(self):
@@ -32,6 +36,7 @@ class ProxyRotator:
 			self._proxy_list = list(set(self._proxy_list))
 			logger.debug(f"Удалено {cnt - len(self._proxy_list)} дубликатов прокси")
 			logger.info(f"Загружено {len(self._proxy_list)} прокси")
+			self.last_update = datetime.now()
 		if len(self._proxy_list) == 0:
 			raise ValueError("Нет прокси для ротации")
 		return self._proxy_list
@@ -67,12 +72,14 @@ class ProxyRotator:
 		"""Синхронно получить следующий прокси"""
 		for proxy in itertools.cycle(self.proxies):
 			logger.debug(f"Синхронно получен прокси {proxy}")
+			self.iteration_cnt += 1
 			yield proxy
 	
 	async def __anext__(self):
 		"""Асинхронное получение прокси"""
 		for proxy in itertools.cycle(self.proxies):
 			logger.debug(f"Асинхронно получен прокси {proxy}")
+			self.iteration_cnt += 1
 			yield proxy
 	
 	def __iter__(self):
@@ -103,6 +110,11 @@ class ProxyRotator:
 				proxy_from_url = [f"{proxy_type}://{row.strip()}" for row in r.text.split("\n") if row.strip() != ""]
 				proxy_list += proxy_from_url
 				logger.debug(f"Загружено {len(proxy_from_url)} прокси с {url}")
+				self.proxy_urls_stats.append({
+					"url": url,
+					"proxy_type": proxy_type,
+					"proxies": len(proxy_from_url)
+				})
 			except Exception as e:
 				logger.warning(f"Не удалось загрузить прокси с {url}")
 				logger.debug(f"Не удалось загрузить прокси {e}")
