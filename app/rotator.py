@@ -24,6 +24,7 @@ class ProxyRotator:
 		self._aiter = None
 		self.iteration_cnt = 0
 		self.last_update = None
+		self.proxy_urls_stats = []
 	
 	@property
 	def proxies(self):
@@ -109,6 +110,11 @@ class ProxyRotator:
 				proxy_from_url = [f"{proxy_type}://{row.strip()}" for row in r.text.split("\n") if row.strip() != ""]
 				proxy_list += proxy_from_url
 				logger.debug(f"Загружено {len(proxy_from_url)} прокси с {url}")
+				self.proxy_urls_stats.append({
+					"url": url,
+					"proxy_type": proxy_type,
+					"proxies": len(proxy_from_url)
+				})
 			except Exception as e:
 				logger.warning(f"Не удалось загрузить прокси с {url}")
 				logger.debug(f"Не удалось загрузить прокси {e}")

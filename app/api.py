@@ -90,7 +90,15 @@ async def stats():
 		"last_usage": app.state.last_usage
 	}
 
-# TODO: Добавить сбор и вывод статистики
+
+@app.get("/stats/urls", status_code=200, tags=["urls", "stats"])
+async def urls_stats():
+	return {
+		"total": len(app.state.rotator),
+		"urls": app.state.rotator.proxy_urls_stats
+	}
+
+
 # TODO: Добавить авто-обновление прокси по времени
 
 
