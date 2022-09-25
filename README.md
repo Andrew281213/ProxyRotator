@@ -30,3 +30,14 @@ http://localhost:9001/proxy?cnt=n
 	]
 }
 ```
+
+## Статистика использования сервиса
+### Основная статистика по использованию сервиса:
+`http://localhost:9001/stats`
+
+### Статистика по ссылкам:
+`http://localhost:9001/stats/urls`
+
+### Документация:
+`http://localhost:9001/help/docs`
+`http://localhost:9001/help/redoc`

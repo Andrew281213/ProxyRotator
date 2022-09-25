@@ -29,7 +29,6 @@ app = FastAPI(
 )
 app.state.rotator = ProxyRotator()
 app.state.start_time = datetime.now()
-app.state.last_usage = None
 
 
 def send_tg_msg(msg):
@@ -66,14 +65,14 @@ send_tg_msg("Сервис <b>Proxy Rotator</b> успешно запущен")
 async def get_proxy_cnt(cnt: int = 1) -> str or dict:
 	"""Получает cnt случайных прокси"""
 	proxy_list = [app.state.rotator.sync_get_proxy() for _ in range(cnt)]
-	app.state.last_usage = datetime.now()
+	app.state.rotator.last_usage = datetime.now()
 	return proxy_list[0] if cnt == 1 else proxy_list
 
 
 @app.get("/proxies", status_code=200, tags=["proxy", "proxies"])
 async def proxies():
 	"""Выводит все доступные прокси"""
-	app.state.last_usage = datetime.now()
+	app.state.rotator.last_usage = datetime.now()
 	return {
 		"len": len(app.state.rotator),
 		"proxies": app.state.rotator.proxies
@@ -87,7 +86,9 @@ async def stats():
 		"iteration_cnt": app.state.rotator.iteration_cnt,
 		"uptime": str(datetime.now() - app.state.start_time),
 		"last_update": app.state.rotator.last_update,
-		"last_usage": app.state.last_usage
+		"last_usage": app.state.rotator.last_usage,
+		"stop_update_after": app.state.rotator.stop_update_after,
+		"update_on": app.state.rotator.stop_update,
 	}
 
 
@@ -97,9 +98,6 @@ async def urls_stats():
 		"total": len(app.state.rotator),
 		"urls": app.state.rotator.proxy_urls_stats
 	}
-
-
-# TODO: Добавить авто-обновление прокси по времени
 
 
 if __name__ == '__main__':
