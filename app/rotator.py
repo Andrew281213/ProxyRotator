@@ -4,7 +4,9 @@ import itertools
 
 from dotenv import load_dotenv
 from datetime import datetime
+from threading import Thread
 from loguru import logger
+from time import sleep
 
 
 class ProxyRotator:
@@ -23,20 +25,36 @@ class ProxyRotator:
 		self._iter = None
 		self._aiter = None
 		self.iteration_cnt = 0
-		self.last_update = None
+		self.last_update = datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0)
+		self.last_usage = datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0)
 		self.proxy_urls_stats = []
+		self.update_every = 60 * 10     # Каждые 10 мин
+		self.stop_update = False
+		self.stop_update_after = self.update_every * 3     # После 3‑х обновлений
+		self.__update_thread = Thread(daemon=True)          # Поток для обновления прокси
 	
 	@property
 	def proxies(self):
 		"""Список прокси"""
 		if self._proxy_list is None:
-			logger.debug("Начинаю загрузку прокси")
-			self._proxy_list = self._load_proxies_from_urls()
-			cnt = len(self._proxy_list)
-			self._proxy_list = list(set(self._proxy_list))
-			logger.debug(f"Удалено {cnt - len(self._proxy_list)} дубликатов прокси")
-			logger.info(f"Загружено {len(self._proxy_list)} прокси")
-			self.last_update = datetime.now()
+			if self.__update_thread._target is None:
+				logger.debug("Создаю поток обновления прокси")
+				# Обновляем дату последнего использования, чтобы обновление не выключилось
+				self.last_usage = datetime.now()
+				self.__update_thread._target = self.__update_proxies
+				self.__update_thread.start()
+			else:
+				logger.info("Ура! Сервис снова используется. Включаю обновление прокси")
+				self.last_usage = datetime.now()
+				self.stop_update = False
+			# Ждем несколько секунд для загрузки прокси
+			sleep(8)
+		# Если прокси не успели загрузить ждем еще какое-то время, затем бросаем исключение
+		for _ in range(3):
+			if len(self._proxy_list) == 0:
+				sleep(2)
+				continue
+			break
 		if len(self._proxy_list) == 0:
 			raise ValueError("Нет прокси для ротации")
 		return self._proxy_list
@@ -61,6 +79,7 @@ class ProxyRotator:
 		with open(filepath, "r") as file:
 			urls = [row.strip("\n") for row in file]
 		for url in urls:
+			# Если в строке не найден тип прокси, отбрасываем
 			url_parts = url.split(type_separator)
 			if len(url_parts) > 1:
 				self._proxy_urls.append(url_parts)
@@ -120,5 +139,27 @@ class ProxyRotator:
 				logger.debug(f"Не удалось загрузить прокси {e}")
 		return proxy_list
 	
+	def __update_proxies(self):
+		while True:
+			if self.stop_update:
+				# Проверяем флаг обновления каждые несколько секунд
+				logger.debug("Авто обновление прокси остановлено")
+				sleep(5)
+				continue
+			if (datetime.now() - self.last_usage).seconds >= self.stop_update_after:
+				logger.info("Сервис давно не использовался. Останавливаю обновление прокси")
+				# Устанавливаем флаг обновления на False и сбрасываем список прокси, чтобы при получении после включения
+				# обновления прокси были новыми
+				self.stop_update = True
+				self._proxy_list = None
+				continue
+			self._proxy_list = self._load_proxies_from_urls()
+			self._iter = None
+			self._aiter = None
+			i = 0
+			while i <= self.update_every:
+				sleep(1)
+				i += 1
+	
 	def __len__(self):
-		return len(self.proxies)
+		return len(self._proxy_list) if self._proxy_list is not None else 0
