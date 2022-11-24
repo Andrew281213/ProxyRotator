@@ -1,11 +1,15 @@
 import os
-import uvicorn
-import requests
-
+import sys
 from datetime import datetime
-from fastapi import FastAPI
+from random import choice
 
-from rotator import ProxyRotator, logger
+import requests
+import uvicorn
+from fastapi import FastAPI, Response, BackgroundTasks
+
+from services import ProxyChecker
+from services import ProxyRotator
+from loguru import logger
 
 
 description = """
@@ -13,7 +17,6 @@ description = """
 
 TG: @tanf93
 """
-
 
 app = FastAPI(
 	title="Простое api для ротации прокси",
@@ -29,6 +32,11 @@ app = FastAPI(
 )
 app.state.rotator = ProxyRotator()
 app.state.start_time = datetime.now()
+app.state.checkers: list[ProxyChecker] = []
+logger.remove()
+logger.add(sys.stdout, level="INFO")
+# logger.add("logs/debug.log", level="DEBUG", rotation="100 MB", retention=0)
+# logger.add("logs/info.log", level="INFO", rotation="100 MB", retention=0)
 
 
 def send_tg_msg(msg):
@@ -98,6 +106,49 @@ async def urls_stats():
 		"total": len(app.state.rotator),
 		"urls": app.state.rotator.proxy_urls_stats
 	}
+
+
+@app.get("/health", status_code=200, tags=["health"])
+async def health():
+	return Response("OK")
+
+
+@app.get("/checker/add", status_code=200, tags=["checker", "proxy"])
+async def add_site_to_checker(
+		url: str, needed_text: str, background_tasks: BackgroundTasks, timeout: int = 20, attempts: int = 3,
+		threads: int = 200,
+):
+	checker = ProxyChecker(
+		proxies=app.state.rotator.proxies, url=url, needed_text=needed_text, timeout=timeout, attempts=attempts,
+		threads=threads
+	)
+	app.state.checkers.append(checker)
+	background_tasks.add_task(checker.check_proxies)
+	return {"status": True}
+
+
+@app.get("/checker/status", status_code=200, tags=["checker", "proxy", "status"])
+async def checkers_statuses():
+	return {
+		"services_cnt": len(app.state.checkers),
+		"statuses": [
+			{
+				"url": checker.url,
+				"needed_text": checker.needed_text,
+				"work": checker.work,
+				"remains": len(checker.proxies),
+				"good_proxies_cnt": len(checker.good_proxies)
+			} for checker in app.state.checkers
+		]
+	}
+
+
+@app.get("/checker", status_code=200)
+async def get_proxies_to_site(url: str, cnt: int = 1):
+	for checker in app.state.checkers:
+		if checker.url == url:
+			proxy_list = checker.good_proxies
+			return choice(proxy_list) if cnt == 1 else proxy_list
 
 
 if __name__ == '__main__':

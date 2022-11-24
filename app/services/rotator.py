@@ -78,6 +78,7 @@ class ProxyRotator:
 		logger.debug("Загружаю ссылки из файла")
 		with open(filepath, "r") as file:
 			urls = [row.strip("\n") for row in file]
+		self.proxy_urls = []
 		for url in urls:
 			# Если в строке не найден тип прокси, отбрасываем
 			url_parts = url.split(type_separator)
@@ -156,6 +157,7 @@ class ProxyRotator:
 			self._proxy_list = self._load_proxies_from_urls()
 			self._iter = None
 			self._aiter = None
+			self.last_update = datetime.now()
 			i = 0
 			while i <= self.update_every:
 				sleep(1)

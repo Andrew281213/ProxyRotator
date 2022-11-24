@@ -2,7 +2,7 @@ version: "3"
 
 services:
   proxy_web:
-    build: ./app
+    build: .
     working_dir: /proxy_web/app
     restart: always
     command: "uvicorn api:app --host 0.0.0.0 --port 9001 --reload"
@@ -10,3 +10,8 @@ services:
       - .:/proxy_web
     ports:
       - "9001:9001"
+    healthcheck:
+      test: "curl --fail http://127.0.0.1:9001/health || exit 1"
+      interval: 120s
+      timeout: 5s
+      retries: 3
